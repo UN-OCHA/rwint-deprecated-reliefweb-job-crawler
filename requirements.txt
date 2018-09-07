@@ -2,3 +2,4 @@ lxml
 bs4
 Flask
 flask_cors
+gunicorn
