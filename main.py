@@ -41,7 +41,7 @@ def create_jobs_feed(source_url, job_pattern):
             job_json = tag_job_url(link, config.TAGGING_URL)
             completed = (job_json.get("error") is None) or (n_retries < config.MAX_RETRIES)
             if completed:
-                append_job_xml(root, job_json)
+                append_job_xml(root, job_json, link)
             n_retries = n_retries + 1
 
         job_counter = job_counter + 1
@@ -124,7 +124,7 @@ def tag_job_url(url, tagging_endpoint):
     return data
 
 
-def append_job_xml(xml_root, job_json):
+def append_job_xml(xml_root, job_json, url):
     # TODO: are all fields values ordered by probablity? It doesn't seem so for job type
     from lxml import etree
 
@@ -137,7 +137,7 @@ def append_job_xml(xml_root, job_json):
 
     element = etree.Element('link')
     job_item.append(element)
-    element.text = data["url"]
+    element.text = url
 
     if data.get("error") is not None:
         element = etree.Element('status')
