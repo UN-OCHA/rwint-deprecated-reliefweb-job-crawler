@@ -39,7 +39,7 @@ def create_jobs_feed(source_url, job_pattern):
         completed = False
         while not completed:
             job_json = tag_job_url(link, config.TAGGING_URL)
-            completed = (job_json.get("error") is None) & (n_retries < config.MAX_RETRIES)
+            completed = (job_json.get("error") is None) or (n_retries < config.MAX_RETRIES)
             if completed:
                 append_job_xml(root, job_json)
             n_retries = n_retries + 1
