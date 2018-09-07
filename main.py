@@ -53,6 +53,9 @@ def create_jobs_feed(source_url, job_pattern):
         # if job_counter == 2: # to limit the number of calls
         #    break
 
+        if (time - start_time).total_seconds() > 0.75 * config.REQUEST_TIMEOUT:
+            break
+
     # pretty string
     from bs4 import BeautifulSoup
     x = etree.tostring(root, pretty_print=True)
