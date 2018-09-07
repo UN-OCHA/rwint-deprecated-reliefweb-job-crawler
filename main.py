@@ -1,27 +1,12 @@
-#### START OF THE FINAL CODE FOR THE MODULE
-
-# https://rw-tag.herokuapp.com/tag_url?scope=job&url=https://www.acted.org/en/jobs/country-transparency-and-compliance-officer-consortium-sanaa/
-# https://rw-tag.herokuapp.com/tag_url?scope=job&url=https://rescue.csod.com/ats/careersite/jobdetails.aspx?id=2668
-
-# url = "https://rw-tag.herokuapp.com/tag_url?scope=job&url=https://rescue.csod.com/ats/careersite/jobdetails.aspx?id=2668"
 import config
 
 ### SAMPLES FOR TESTING
-ocha_url = 'https://www.unocha.org/about-us/job-opportunities'  # working
-ocha_job_pattern = 'jobdetail'
 
-unicef_url = 'https://www.unicef.org/about/employ/'  # don't ge tthe URL jobs
-unicef_job_pattern = '/about/employ'  # trying
-
-google_url = 'https://careers.google.com/jobs#t=sq&q=j&li=20&l=false&jc=DATA_CENTER_OPERATIONS&jc=DEVELOPER_RELATIONS&jc=HARDWARE_ENGINEERING&jc=INFORMATION_TECHNOLOGY&jc=NETWORK_ENGINEERING&jc=TECHNICAL_WRITING&jc=TECHNICAL_SOLUTIONS&jc=TECHNICAL_INFRASTRUCTURE_ENGINEERING&jc=SOFTWARE_ENGINEERING&jc=MANUFACTURING_SUPPLY_CHAIN&jc=PROGRAM_MANAGEMENT&jcoid=7c8c6665-81cf-4e11-8fc9-ec1d6a69120c&jcoid=e43afd0d-d215-45db-a154-5386c9036525&'
-google_url_pattern = 'jid=\/google\/'  # not working
-
-wfp_url = 'http://www1.wfp.org/careers/job-openings'  # WORKING
-wfp_url_pattern = 'https://career012.successfactors.eu/career?career_ns=job_listing'
-
+# http://localhost:5000/web_crawl?url=https://www.unocha.org/about-us/job-opportunities&job_pattern=jobdetail
+# http://localhost:5000/web_crawl?url=http://www1.wfp.org/careers/job-openings&job_pattern=job_listing
+# http://localhost:5000/web_crawl?url=https://www.unicef.org/about/employ/&job_pattern=/about/employ
 
 ### MODULE START
-
 
 def create_jobs_feed(source_url, job_pattern):
     from lxml import etree
@@ -31,9 +16,24 @@ def create_jobs_feed(source_url, job_pattern):
     root.attrib['generator'] = "auto-job-reader"
     root.attrib['timestamp'] = str(datetime.datetime.now())
 
-    job_links = get_job_links(source_url, job_pattern)
+    try:
+        job_links = get_job_links(source_url, job_pattern)
+    except Exception as e:
+        root.attrib['jobs_found'] = "0"
+        root.attrib['jobs_processed'] = "0"
+        root.attrib['seconds_to_process'] = "0"
+        root.attrib['status'] = "ERROR: Couldn't connect to the url " + str(e)
+
+    if len(job_links) == 0:
+        root.attrib['jobs_found'] = str(len(job_links))
+        root.attrib['jobs_processed'] = "0"
+        root.attrib['seconds_to_process'] = "0"
+        root.attrib['status'] = "No job links found"
+
     start_time = datetime.datetime.now()
     job_counter = 0
+    max_processing_time = 0
+    time = datetime.datetime.now()
     for link in job_links:
         n_retries = 0
         completed = False
@@ -45,7 +45,11 @@ def create_jobs_feed(source_url, job_pattern):
             n_retries = n_retries + 1
 
         job_counter = job_counter + 1
+        processing_time = (datetime.datetime.now() - time).total_seconds()
+        if (processing_time > max_processing_time):
+            max_processing_time = processing_time
         time = datetime.datetime.now()
+        elapsed_time = (time - start_time).total_seconds()
         print("Processed " + str(job_counter) + " jobs in " + str(
             time - start_time) + " seconds. Estimated time left : " +
               str(((time - start_time) * len(job_links) / job_counter) - (time - start_time)) + " - " +
@@ -53,14 +57,19 @@ def create_jobs_feed(source_url, job_pattern):
         # if job_counter == 2: # to limit the number of calls
         #    break
 
-        if (time - start_time).total_seconds() > 0.75 * config.REQUEST_TIMEOUT:
+        root.attrib['jobs_found'] = str(len(job_links))
+        root.attrib['jobs_processed'] = str(job_counter)
+        root.attrib['seconds_to_process'] = str(elapsed_time)
+        if elapsed_time + max_processing_time > config.REQUEST_TIMEOUT:
+            root.attrib['status'] = "Partially processed"
             break
+        else:
+            root.attrib['status'] = "Complete processed"
 
     # pretty string
     from bs4 import BeautifulSoup
     x = etree.tostring(root, pretty_print=True)
     xml_string = BeautifulSoup(x, "xml").prettify()
-    print(xml_string)
     return xml_string
 
 
@@ -83,6 +92,7 @@ def get_job_links(source_url, job_pattern):
 
     except Exception as e:
         print("ERROR: While calling " + url)
+        raise e
 
     print("Processing " + str(len(links)) + " links to jobs")
     return links
@@ -128,7 +138,7 @@ def append_job_xml(xml_root, job_json):
     element = etree.Element('link')
     job_item.append(element)
     element.text = "Not available"
-    element.attrib['notes'] = "TODO - To add to the JSON result"
+    element.attrib['notes'] = data["url"]
 
     if data.get("error") is not None:
         element = etree.Element('status')
