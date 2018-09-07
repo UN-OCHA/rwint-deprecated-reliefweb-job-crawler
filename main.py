@@ -137,8 +137,7 @@ def append_job_xml(xml_root, job_json):
 
     element = etree.Element('link')
     job_item.append(element)
-    element.text = "Not available"
-    element.attrib['notes'] = data["url"]
+    element.text = data["url"]
 
     if data.get("error") is not None:
         element = etree.Element('status')
