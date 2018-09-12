@@ -74,6 +74,8 @@ def create_jobs_feed(source_url, job_pattern):
 
 
 def get_job_links(source_url, job_pattern):
+    from urllib.parse import quote
+
     url = source_url
     pattern = job_pattern
 
@@ -88,7 +90,7 @@ def get_job_links(source_url, job_pattern):
         for link in soup.find_all('a', href=True):
 
             if pattern in link['href']:
-                links.add(link['href'])
+                links.add(quote(link['href']))
 
     except Exception as e:
         print("ERROR: While calling " + url)
@@ -127,6 +129,7 @@ def tag_job_url(url, tagging_endpoint):
 def append_job_xml(xml_root, job_json, url):
     # TODO: are all fields values ordered by probablity? It doesn't seem so for job type
     from lxml import etree
+    from urllib.parse import unquote
 
     data = job_json
     root = xml_root
@@ -137,7 +140,7 @@ def append_job_xml(xml_root, job_json, url):
 
     element = etree.Element('link')
     job_item.append(element)
-    element.text = url
+    element.text = unquote(url)
 
     if data.get("error") is not None:
         element = etree.Element('status')
@@ -162,14 +165,21 @@ def append_job_xml(xml_root, job_json, url):
     element = etree.Element('field_country')
     job_item.append(element)
     element.text = "ISO-3 pending"  # MUST BE ISO-3 and not ISO-2
-    element.attrib['full_name'] = str(data["primary_country"][0])
-    element.attrib['iso-2'] = str(data["primary_country"][1])
+    if len(data["primary_country"])>0:
+        element.attrib['full_name'] = str(data["primary_country"][0])
+        element.attrib['iso-2'] = str(data["primary_country"][1])
+    else:
+        element.attrib['full_name'] = ""
+        element.attrib['iso-2'] = ""
     element.attrib['notes'] = "TODO - To return ISO-3 code from the JSON"
 
     element = etree.Element('field_city')
     job_item.append(element)
-    element.text = str(data["cities"][0])
-    element.attrib['all-cities'] = str(data["cities"])
+    if len(data["cities"])>0:
+        element.text = str(data["cities"][0])
+        element.attrib['all-cities'] = str(data["cities"])
+    else:
+        element.text = ""
     element.attrib['notes'] = "TODO - Is the first city the most relevant?"
 
     element = etree.Element('field_source')
@@ -264,9 +274,9 @@ def call_and_create_jobs_feed():
 if __name__ == '__main__':
     # get public IP -- if needed
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", config.PORT))
+    s.connect(("8.8.8.8", 80))
     publicIP = s.getsockname()[0]
     s.close()
 
     # app.run(debug=reliefweb_config.DEBUG, host=publicIP, port=reliefweb_config.PORT)  # use_reloader=False
-    app.run(debug=config.DEBUG, host='0.0.0.0')  # use_reloader=False // This does not call to main
+    app.run(debug=config.DEBUG, host='0.0.0.0', port=config.PORT)  # use_reloader=False // This does not call to main
