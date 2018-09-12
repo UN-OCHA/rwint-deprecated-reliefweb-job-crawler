@@ -8,14 +8,18 @@ import config
 
 ### MODULE START
 
-def create_jobs_feed(source_url, job_pattern):
+def create_jobs_feed(source_url, job_pattern, organization_id):
     from lxml import etree
     import datetime
 
     root = etree.Element('channel')
     root.attrib['generator'] = "auto-job-reader"
     root.attrib['timestamp'] = str(datetime.datetime.now())
+    root.attrib['source_url'] = str(source_url)
+    root.attrib['job_pattern'] = str(job_pattern)
+    root.attrib['organization_id'] = str(organization_id)
 
+    job_links = []
     try:
         job_links = get_job_links(source_url, job_pattern)
     except Exception as e:
@@ -41,7 +45,7 @@ def create_jobs_feed(source_url, job_pattern):
             job_json = tag_job_url(link, config.TAGGING_URL)
             completed = (job_json.get("error") is None) or (n_retries < config.MAX_RETRIES)
             if completed:
-                append_job_xml(root, job_json, link)
+                append_job_xml(root, job_json, link, organization_id)
             n_retries = n_retries + 1
 
         job_counter = job_counter + 1
@@ -68,7 +72,7 @@ def create_jobs_feed(source_url, job_pattern):
 
     # pretty string
     from bs4 import BeautifulSoup
-    x = etree.tostring(root, pretty_print=True)
+    x = etree.tostring(root, pretty_print=True, method="xml")
     xml_string = BeautifulSoup(x, "xml").prettify()
     return xml_string
 
@@ -87,10 +91,18 @@ def get_job_links(source_url, job_pattern):
         resp = urllib.request.urlopen(url)
         soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'), features="lxml")
 
+
         for link in soup.find_all('a', href=True):
 
             if pattern in link['href']:
+                # TODO: For the palladium group, if the url is relative, then add the domain of the whole site
+
                 links.add(quote(link['href']))
+
+        for link in soup.find_all('link'):
+            # TODO: Support for RSS links
+            if pattern in link:
+                links.add(quote(link))
 
     except Exception as e:
         print("ERROR: While calling " + url)
@@ -126,7 +138,7 @@ def tag_job_url(url, tagging_endpoint):
     return data
 
 
-def append_job_xml(xml_root, job_json, url):
+def append_job_xml(xml_root, job_json, url, organization_id):
     # TODO: are all fields values ordered by probablity? It doesn't seem so for job type
     from lxml import etree
     from urllib.parse import unquote
@@ -153,80 +165,104 @@ def append_job_xml(xml_root, job_json, url):
         element.text = "OK"
         job_item.append(element)
 
+    element = etree.Element('field_source')
+    job_item.append(element)
+    element.text = str(organization_id)
+
     element = etree.Element('title')
     job_item.append(element)
     element.text = str(data["title"])
 
     element = etree.Element('field_job_closing_date')
     job_item.append(element)
-    element.text = "Not available"
+    element.text = ""
     element.attrib['notes'] = "TODO - Not possible from source"
 
     element = etree.Element('field_country')
     job_item.append(element)
-    element.text = "ISO-3 pending"  # MUST BE ISO-3 and not ISO-2
     if len(data["primary_country"])>0:
+        element.text = str(data["primary_country"][1])  # MUST BE ISO-3 and not ISO-2
         element.attrib['full_name'] = str(data["primary_country"][0])
-        element.attrib['iso-2'] = str(data["primary_country"][1])
-    else:
-        element.attrib['full_name'] = ""
-        element.attrib['iso-2'] = ""
-    element.attrib['notes'] = "TODO - To return ISO-3 code from the JSON"
+
+    if config.DEBUG:
+        element = etree.Element('field_all_countries')
+        element.attrib['type'] = "info_debug"
+        job_item.append(element)
+        element.text = str(data["countries_iso2"])
 
     element = etree.Element('field_city')
     job_item.append(element)
     if len(data["cities"])>0:
         element.text = str(data["cities"][0])
-        element.attrib['all-cities'] = str(data["cities"])
-    else:
-        element.text = ""
-    element.attrib['notes'] = "TODO - Is the first city the most relevant?"
 
-    element = etree.Element('field_source')
-    job_item.append(element)
-    element.text = "Not available"  # MUST MAP THE ORGANZATIONS ID OF RELIEFWEB
-    element.attrib['complete-name'] = "Not available"
-    element.attrib['source-url'] = "Not available"
-    element.attrib['notes'] = "TODO - To add to the JSON result - Can use newspaper.create()"
+    if config.DEBUG:
+        element = etree.Element('field_all_cities')
+        job_item.append(element)
+        element.text = str(data["cities"])
+        element.attrib['type'] = "info_debug"
 
     element = etree.Element('field_how_to_apply')
     job_item.append(element)
-    element.text = "Not available"
+    element.text = ""
     element.attrib['notes'] = "TODO - How to fill in this?"
 
     i_theme = 0
     for theme in data["job-theme"]:
         element = etree.Element('field_theme')
-        element.text = str(data["job-theme"][i_theme][0])
+        element.text = config.theme_dictionary.get(str(data["job-theme"][i_theme][0]))
+        element.attrib['name'] = str(data["job-theme"][i_theme][0])
         element.attrib['probability'] = str(data["job-theme"][i_theme][1])
-        element.attrib['all-themes'] = str(data["job-theme"])
         job_item.append(element)
         i_theme = i_theme + 1
         if i_theme == 0:
             break
 
+    if config.DEBUG:
+        element = etree.Element('field_all_themes')
+        element.attrib['type'] = "info_debug"
+        job_item.append(element)
+        element.text = str(data["job-theme"])
+
     element = etree.Element('field_job_type')
-    element.text = str(data["job-type"][0][0])
+    element.text = config.job_type_dictionary.get(str(data["job-type"][0][0]))
+    element.attrib['name'] = str(data["job-type"][0][0])
     element.attrib['probability'] = str(data["job-type"][0][1])
-    element.attrib['all-job-types'] = str(data["job-type"])
     job_item.append(element)
+
+    if config.DEBUG:
+        element = etree.Element('field_all_job_types')
+        element.attrib['type'] = "info_debug"
+        job_item.append(element)
+        element.text = str(data["job-type"])
 
     element = etree.Element('field_career_categories')
-    element.text = str(data["job-category"][0][0])
+    element.text = config.career_category_dictionary.get(str(data["job-category"][0][0]))
+    element.attrib['name'] = str(data["job-category"][0][0])
     element.attrib['probability'] = str(data["job-category"][0][1])
-    element.attrib['all-job-categories'] = str(data["job-category"])
     job_item.append(element)
 
+    if config.DEBUG:
+        element = etree.Element('field_all_career_categories')
+        element.attrib['type'] = "info_debug"
+        job_item.append(element)
+        element.text = str(data["job-category"])
+
     element = etree.Element('field_job_experience')
-    element.text = str(data["job-experience"][0][0])
+    element.text = config.experience_dictionary.get(str(data["job-experience"][0][0]))
+    element.attrib['name'] = str(data["job-experience"][0][0])
     element.attrib['probability'] = str(data["job-experience"][0][1])
-    element.attrib['all-job-experiences'] = str(data["job-experience"])
     job_item.append(element)
+
+    if config.DEBUG:
+        element = etree.Element('field_all_job-experiences')
+        element.attrib['type'] = "info_debug"
+        job_item.append(element)
+        element.text = str(data["job-experience"])
 
     element = etree.Element('body')
     job_item.append(element)
-    element.text = str(data["body_markdown"])
-    element.attrib['notes'] = "Body in markdown format"
+    element.text = data["body_markdown"]
+    element.attrib['notes'] = "Body in markdown format / View source for correct markdown"
 
     return root
 
@@ -263,8 +299,9 @@ def call_and_create_jobs_feed():
     else:
         url = request.args.get('url')
         job_pattern = request.args.get('job_pattern')
+        org_id = request.args.get('org_id')
 
-    output = create_jobs_feed(url, job_pattern)
+    output = create_jobs_feed(url, job_pattern, org_id)
 
     response = make_response(output)
     response.headers['content-type'] = 'text/xml'
