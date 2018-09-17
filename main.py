@@ -79,6 +79,7 @@ def create_jobs_feed(source_url, job_pattern, organization_id, resp_format="html
 
 def get_job_links(source_url, job_pattern, resp_format):
     from urllib.parse import quote
+    from urllib.parse import urljoin
 
     url = source_url
     pattern = job_pattern
@@ -96,15 +97,23 @@ def get_job_links(source_url, job_pattern, resp_format):
 
             for link in soup.find_all('a', href=True):
 
+                # handling relative routes // adding domain path
                 if pattern in link['href']:
-                    # TODO: For the palladium group, if the url is relative, then add the domain of the whole site
-                    links.add(quote(link['href']))
+                    final_link = quote(link['href'])
+                    if final_link[0:4] != 'http':
+                        final_link = urljoin(url, final_link)
+                    links.add(final_link)
 
-        if resp_format == "xml":
+        elif resp_format == "xml":
             soup = BeautifulSoup(resp, "lxml-xml")
             for link in soup.find_all('link'):
                 if pattern in link.getText():
-                    links.add(quote(link.getText()))
+                    final_link = quote(link.getText())
+                    if (final_link[0:4] != 'http'):
+                        final_link = urljoin(url, final_link)
+                    links.add(final_link)
+
+                    links.add(final_link)
         else:
             e = Exception("The format paramater doesn't contain a valid value. It should be empty, 'xml' or 'html'")
             raise e
@@ -292,7 +301,7 @@ app.threaded = config.DEBUG
 # Instructions ENDPOINT
 @cross_origin()
 def main():
-    return "Please, use the /web_crawl endpoint with the param url to tag a url or pdf. Example: http://IP:PORT/web_crawl?url=URL_WITH_HTTP&job_pattern=PATTERN_IN_JOB_LINKS"
+    return "Please, use the /web_crawl endpoint with the param url to tag a url or pdf. Example: http://IP:PORT/web_crawl?format=html&org_id=RW_ORG_ID&url=URL_WITH_HTTP&job_pattern=PATTERN_IN_JOB_LINKS"
 
 
 @app.route("/web_crawl", methods=['POST', 'GET'])
