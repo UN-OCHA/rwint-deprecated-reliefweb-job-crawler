@@ -80,43 +80,43 @@ def create_jobs_feed(source_url, job_pattern, organization_id, resp_format="html
 def get_job_links(source_url, job_pattern, resp_format):
     from urllib.parse import quote
     from urllib.parse import urljoin
+    from urllib.request import Request, urlopen
 
     url = source_url
     pattern = job_pattern
 
-    import urllib.request
     from bs4 import BeautifulSoup  # pip install beautifulsoup4
 
     links = set()
     try:
-        resp = urllib.request.urlopen(url)
+        req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = urlopen(req).read()
 
         if resp_format == "html":
             # soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'), features="lxml")
             soup = BeautifulSoup(resp, "lxml")
-
-            for link in soup.find_all('a', href=True):
-
-                # handling relative routes // adding domain path
-                if pattern in link['href']:
-                    final_link = quote(link['href'])
-                    if final_link[0:4] != 'http':
-                        final_link = urljoin(url, final_link)
-                    links.add(final_link)
-
+            link_container = soup.find_all('a', href=True)
         elif resp_format == "xml":
             soup = BeautifulSoup(resp, "lxml-xml")
-            for link in soup.find_all('link'):
-                if pattern in link.getText():
-                    final_link = quote(link.getText())
-                    if (final_link[0:4] != 'http'):
-                        final_link = urljoin(url, final_link)
-                    links.add(final_link)
-
-                    links.add(final_link)
+            link_container = soup.find_all('link')
         else:
             e = Exception("The format paramater doesn't contain a valid value. It should be empty, 'xml' or 'html'")
             raise e
+
+        for link in link_container:
+
+            # handling relative routes // adding domain path
+            if resp_format == "html":
+                link_element = link['href']
+            elif resp_format == "xml":
+                link_element = link.getText()
+
+            if pattern in link_element:
+                final_link = quote(link_element)
+                if final_link[0:4] != 'http':
+                    final_link = urljoin(url, final_link)
+                if final_link not in links:
+                    links.add(final_link)
 
     except Exception as e:
         print("ERROR: While calling " + url)
