@@ -8,7 +8,7 @@ import config
 
 ### MODULE START
 
-def create_jobs_feed(source_url, job_pattern, organization_id):
+def create_jobs_feed(source_url, job_pattern, organization_id, resp_format="html"):
     from lxml import etree
     import datetime
 
@@ -21,18 +21,18 @@ def create_jobs_feed(source_url, job_pattern, organization_id):
 
     job_links = []
     try:
-        job_links = get_job_links(source_url, job_pattern)
+        job_links = get_job_links(source_url, job_pattern, resp_format)
+        if len(job_links) == 0:
+            root.attrib['jobs_found'] = str(len(job_links))
+            root.attrib['jobs_processed'] = "0"
+            root.attrib['seconds_to_process'] = "0"
+            root.attrib['status'] = "No job links found"
+
     except Exception as e:
         root.attrib['jobs_found'] = "0"
         root.attrib['jobs_processed'] = "0"
         root.attrib['seconds_to_process'] = "0"
-        root.attrib['status'] = "ERROR: Couldn't connect to the url " + str(e)
-
-    if len(job_links) == 0:
-        root.attrib['jobs_found'] = str(len(job_links))
-        root.attrib['jobs_processed'] = "0"
-        root.attrib['seconds_to_process'] = "0"
-        root.attrib['status'] = "No job links found"
+        root.attrib['status'] = "ERROR: " + str(e)
 
     start_time = datetime.datetime.now()
     job_counter = 0
@@ -77,7 +77,7 @@ def create_jobs_feed(source_url, job_pattern, organization_id):
     return xml_string
 
 
-def get_job_links(source_url, job_pattern):
+def get_job_links(source_url, job_pattern, resp_format):
     from urllib.parse import quote
 
     url = source_url
@@ -89,20 +89,25 @@ def get_job_links(source_url, job_pattern):
     links = set()
     try:
         resp = urllib.request.urlopen(url)
-        soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'), features="lxml")
 
+        if resp_format == "html":
+            # soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'), features="lxml")
+            soup = BeautifulSoup(resp, "lxml")
 
-        for link in soup.find_all('a', href=True):
+            for link in soup.find_all('a', href=True):
 
-            if pattern in link['href']:
-                # TODO: For the palladium group, if the url is relative, then add the domain of the whole site
+                if pattern in link['href']:
+                    # TODO: For the palladium group, if the url is relative, then add the domain of the whole site
+                    links.add(quote(link['href']))
 
-                links.add(quote(link['href']))
-
-        for link in soup.find_all('link'):
-            # TODO: Support for RSS links
-            if pattern in link:
-                links.add(quote(link))
+        if resp_format == "xml":
+            soup = BeautifulSoup(resp, "lxml-xml")
+            for link in soup.find_all('link'):
+                if pattern in link.getText():
+                    links.add(quote(link.getText()))
+        else:
+            e = Exception("The format paramater doesn't contain a valid value. It should be empty, 'xml' or 'html'")
+            raise e
 
     except Exception as e:
         print("ERROR: While calling " + url)
@@ -300,8 +305,11 @@ def call_and_create_jobs_feed():
         url = request.args.get('url')
         job_pattern = request.args.get('job_pattern')
         org_id = request.args.get('org_id')
+        resp_format = request.args.get('format')  # html or xml
+        if resp_format is None:
+            resp_format = "html"
 
-    output = create_jobs_feed(url, job_pattern, org_id)
+    output = create_jobs_feed(url, job_pattern, org_id, resp_format)
 
     response = make_response(output)
     response.headers['content-type'] = 'text/xml'

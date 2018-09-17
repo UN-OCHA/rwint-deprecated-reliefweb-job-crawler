@@ -34,24 +34,27 @@ $ python3 main.py &
 
 ## How to use the service
 
-There are 2 parameters to the /web_crawl endpoint:
+Parameters to the /web_crawl endpoint:
 
 - url - *URL starting with http where the list of jobs is displayed*
 - job_pattern - *String which is contained in **all the job URLs** so the crawler can identify what links refer to a 
 job*
+- org_id - *Organization ID opf the source in ReliefWeb to complete the job posting feed*
+- format - *'html' or 'xml'* - If not present, default to html 
 
 Once the backend is running you can use the following endpoints:
 
-- UNICEF http://localhost:5000/web_crawl?url=https://www.unicef.org/about/employ/&job_pattern=/employ/&org_id=1979 # ERROR - JavaScript lazy load
+- UNICEF http://localhost:5000/web_crawl?url=https://www.unicef.org/about/employ/&job_pattern=/employ/?job=&org_id=1979 # ERROR - JavaScript lazy load
 - IRC
 - ACTED http://localhost:5000/web_crawl?url=https://www.acted.org/en/get-involved/join-us/vacancies/&job_pattern=/jobs/&org_id=823
 - SOLIDARITE http://localhost:5000/web_crawl?url=https://www.solidarites.org/en/since-1980/join-us/jobs/&job_pattern=/job-detail/&org_id=823
 - SAVE THE CHILDREN http://localhost:5000/web_crawl?url=https://recruiting.ultipro.com/SAV1002STCF/JobBoard/7d92e82b-af74-464d-859b-c5b8cba6e92e/&job_pattern=OpportunityDetail&org_id=2865 # ERROR - javascript lazy load
 - PALLADIUM GROUP http://localhost:5000/web_crawl?url=http://thepalladiumgroup.com/jobs&job_pattern=jobs&org_id=25696 # ERROR - relative urls
 - PREMIERE URGENCE (Employees) http://localhost:5000/web_crawl?url=https://www.premiere-urgence.org/en/recruitment/our-vacancies/?types%5B%5D=Employee&job_pattern=/offres-emploi/&org_id=8593 -- ERROR connecting
+- RELIEF INTERNATIONAL http://localhost:5000/web_crawl?format=xml&org_id=2024&job_pattern=requisition.jsp&org_id=2024&url=https%3A%2F%2Fchp.tbe.taleo.net%2Fchp01%2Fats%2Fservlet%2FRss%3Forg%3DRI%26cws%3D4
+
 # TODO: More searches
-- IOM https://recruit.iom.int/sap/bc/webdynpro/sap/hrrcf_a_unreg_job_search?sap-client=100&sap-language=EN&sap-wd-configid=ZHRRCF_A_UNREG_JOB_SEARCH# - 1255 - ERROR: ASP
-- RELIEF INTERNATIONAL http://localhost:5000/web_crawl?job_pattern=requisition.jsp&org_id=2024&url=https://chp.tbe.taleo.net/chp01/ats/servlet/Rss?org=RI&cws=4 - TODO: Support for RSS 
+- IOM https://recruit.iom.int/sap/bc/webdynpro/sap/hrrcf_a_unreg_job_search?sap-client=100&sap-language=EN&sap-wd-configid=ZHRRCF_A_UNREG_JOB_SEARCH# - 1255 - ERROR: ASP 
 - MERCY CORPS
 - HANDICAP INTERNATIONAL
 - MEDECINS DU MONDE
