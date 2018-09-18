@@ -7,6 +7,7 @@ import config
 # http://localhost:5000/web_crawl?url=https://www.unicef.org/about/employ/&job_pattern=/about/employ
 
 ### MODULE START
+default_message = "Please, use the /web_crawl endpoint with the param url to tag a url or pdf. Example: http://IP:PORT/web_crawl?format=html&org_id=RW_ORG_ID&url=URL_WITH_HTTP&job_pattern=PATTERN_IN_JOB_LINKS"
 
 def create_jobs_feed(source_url, job_pattern, organization_id, resp_format="html"):
     from lxml import etree
@@ -171,7 +172,10 @@ def append_job_xml(xml_root, job_json, url, organization_id):
     if data.get("error") is not None:
         element = etree.Element('status')
         element.text = "ERROR"
-        element.attrib['description'] = data["error"]
+        if "nltk" in str(data.get("error")):
+            element.attrib['description'] = "There was a problem with nltk corpora, please try again"
+        else:
+            element.attrib['description'] = str(data.get("error"))
         job_item.append(element)
         return root  # Finish processing
     else:
@@ -301,7 +305,7 @@ app.threaded = config.DEBUG
 # Instructions ENDPOINT
 @cross_origin()
 def main():
-    return "Please, use the /web_crawl endpoint with the param url to tag a url or pdf. Example: http://IP:PORT/web_crawl?format=html&org_id=RW_ORG_ID&url=URL_WITH_HTTP&job_pattern=PATTERN_IN_JOB_LINKS"
+    return default_message
 
 
 @app.route("/web_crawl", methods=['POST', 'GET'])
@@ -312,14 +316,18 @@ def call_and_create_jobs_feed():
         return "No support for GET requests"
     else:
         url = request.args.get('url')
+        if url is None:
+            return "Parameter url is mandatory<br>" + default_message
         job_pattern = request.args.get('job_pattern')
+        if job_pattern is None:
+            return "Parameter job_pattern is mandatory<br>" + default_message
         org_id = request.args.get('org_id')
+        if org_id is None:
+            return "Parameter org_id is mandatory<br>" + default_message
         resp_format = request.args.get('format')  # html or xml
         if resp_format is None:
             resp_format = "html"
-
     output = create_jobs_feed(url, job_pattern, org_id, resp_format)
-
     response = make_response(output)
     response.headers['content-type'] = 'text/xml'
     return response
