@@ -292,23 +292,23 @@ from flask import Flask, request
 from flask import make_response
 from flask_cors import CORS, cross_origin
 
-app = Flask(__name__)
-cors = CORS(app)
-app.config['CORS_HEADER'] = 'Content-type'
+application = Flask(__name__)
+cors = CORS(application)
+application.config['CORS_HEADER'] = 'Content-type'
 # Content-type: application/json
-app.debug = False
-app.threaded = config.DEBUG
+application.debug = False
+application.threaded = config.DEBUG
 
 
 # Creating the API endpoints
-@app.route("/")
+@application.route("/")
 # Instructions ENDPOINT
 @cross_origin()
 def main():
     return default_message
 
 
-@app.route("/web_crawl", methods=['POST', 'GET'])
+@application.route("/web_crawl", methods=['POST', 'GET'])
 # sample http://localhost:5000/web_crawl?url=https://www.unocha.org/about-us/job-opportunities&job_pattern=jobdetail
 @cross_origin()
 def call_and_create_jobs_feed():
@@ -340,5 +340,5 @@ if __name__ == '__main__':
     publicIP = s.getsockname()[0]
     s.close()
 
-    # app.run(debug=reliefweb_config.DEBUG, host=publicIP, port=reliefweb_config.PORT)  # use_reloader=False
-    app.run(debug=config.DEBUG, host='0.0.0.0', port=config.PORT)  # use_reloader=False // This does not call to main
+    # application.run(debug=reliefweb_config.DEBUG, host=publicIP, port=reliefweb_config.PORT)  # use_reloader=False
+    application.run(debug=config.DEBUG, host='0.0.0.0', port=config.PORT)  # use_reloader=False // This does not call to main
