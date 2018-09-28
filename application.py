@@ -191,16 +191,11 @@ def append_job_xml(xml_root, job_json, url, organization_id):
     job_item.append(element)
     element.text = str(data["title"])
 
-    element = etree.Element('field_job_closing_date')
-    job_item.append(element)
-    element.text = ""
-    element.attrib['notes'] = "TODO - Not possible from source"
-
     element = etree.Element('field_country')
     job_item.append(element)
     if len(data["primary_country"])>0:
         element.text = str(data["primary_country"][1])  # MUST BE ISO-3 and not ISO-2
-        element.attrib['full_name'] = str(data["primary_country"][0])
+        element.attrib['name'] = str(data["primary_country"][0])
 
     if config.DEBUG:
         element = etree.Element('field_all_countries')
@@ -208,6 +203,9 @@ def append_job_xml(xml_root, job_json, url, organization_id):
         job_item.append(element)
         element.text = str(data["countries_iso2"])
 
+    # TODO: this returns an array of cities (repeated) and the first one is not the most accurate
+    # To get frequency of each city and return the highest frequency. If all equal, return all.
+    # Multiple field
     element = etree.Element('field_city')
     job_item.append(element)
     if len(data["cities"])>0:
@@ -218,11 +216,6 @@ def append_job_xml(xml_root, job_json, url, organization_id):
         job_item.append(element)
         element.text = str(data["cities"])
         element.attrib['type'] = "info_debug"
-
-    element = etree.Element('field_how_to_apply')
-    job_item.append(element)
-    element.text = ""
-    element.attrib['notes'] = "TODO - How to fill in this?"
 
     i_theme = 0
     for theme in data["job-theme"]:
@@ -277,10 +270,21 @@ def append_job_xml(xml_root, job_json, url, organization_id):
         job_item.append(element)
         element.text = str(data["job-experience"])
 
+    element = etree.Element('field_job_closing_date')
+    job_item.append(element)
+    element.text = ""
+    element.attrib['notes'] = "TODO - Not possible from source"
+
     element = etree.Element('body')
     job_item.append(element)
     element.text = data["body_markdown"]
     element.attrib['notes'] = "Body in markdown format / View source for correct markdown"
+
+    element = etree.Element('field_how_to_apply')
+    job_item.append(element)
+    element.text = ""
+    element.attrib['notes'] = "TODO - How to fill in this?"
+
 
     return root
 
