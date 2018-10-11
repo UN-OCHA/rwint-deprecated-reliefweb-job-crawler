@@ -7,8 +7,7 @@ DEBUG = True
 # URL of the endpoint for tagging each job
 # TAGGING_URL = "https://rw-tag.herokuapp.com/tag_url?scope=job&url="
 # TAGGING_URL = "http://0.0.0.0:5001/tag_url?scope=job&url="
-TAGGING_URL = "http://rwtag-dev12.us-east-1.elasticbeanstalk.com/tag_url?scope=job&url="
-
+TAGGING_URL = "http://rw-tag-assistant.us-east-1.elasticbeanstalk.com/tag_url?scope=job&url="
 
 MAX_RETRIES = 3  # Number of times to try to tag a url when getting an error
 
