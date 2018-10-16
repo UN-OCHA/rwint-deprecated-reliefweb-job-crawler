@@ -208,8 +208,8 @@ def append_job_xml(xml_root, job_json, url, organization_id):
     # Multiple field
     element = etree.Element('field_city')
     job_item.append(element)
-    if len(data["cities"])>0:
-        element.text = str(data["cities"][0])
+    if len(data["primary_city"]) > 0:
+        element.text = str(data["primary_city"][0])
 
     if config.DEBUG:
         element = etree.Element('field_all_cities')
