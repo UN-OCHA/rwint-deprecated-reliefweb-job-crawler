@@ -194,22 +194,22 @@ def append_job_xml(xml_root, job_json, url, organization_id):
     element = etree.Element('field_country')
     job_item.append(element)
     if len(data["primary_country"])>0:
-        element.text = str(data["primary_country"][1])  # MUST BE ISO-3 and not ISO-2
+        element.text = str(data["primary-country"][1])  # MUST BE ISO-3 and not ISO-2
         element.attrib['name'] = str(data["primary_country"][0])
 
     if config.DEBUG:
         element = etree.Element('field_all_countries')
         element.attrib['type'] = "info_debug"
         job_item.append(element)
-        element.text = str(data["countries_iso2"])
+        element.text = str(data["countries-iso2"])
 
     # TODO: this returns an array of cities (repeated) and the first one is not the most accurate
     # To get frequency of each city and return the highest frequency. If all equal, return all.
     # Multiple field
     element = etree.Element('field_city')
     job_item.append(element)
-    if len(data["primary_city"]) > 0:
-        element.text = str(data["primary_city"][0])
+    if len(data["city"]) > 0:
+        element.text = str(data["city"][0])
 
     if config.DEBUG:
         element = etree.Element('field_all_cities')
